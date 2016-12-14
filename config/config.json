@@ -24,17 +24,16 @@
                     "ldap-auth-client",
                     "ldap-utils",
                     "libjpeg-dev",
-                    "libpam-foreground",
                     "libpam-krb5",
                     "libsasl2-modules-gssapi-mit",
                     "libtool",
                     "linux-image-extra-virtual",
-                    "linux-tools",
+                    "linux-tools-common",
                     "lynx",
                     "mercurial",
                     "nfs-common",
                     "ntp",
-                    "openjdk-6-jdk",
+                    "openjdk-8-jdk",
                     "python-dev",
                     "python-pip",
                     "python-numpy",
@@ -489,6 +488,12 @@
     },
 
     "Recipes": {
+        "pa1": {
+            "Enable": [
+                "head",
+                "compute_CPU"
+            ]
+        },
         "pa2": {
             "Enable": [
                 "head",

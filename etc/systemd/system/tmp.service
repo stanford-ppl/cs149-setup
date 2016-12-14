@@ -2,12 +2,10 @@
 # EC2 is mounted on ephemeral, instance-local storage. As the storage
 # is ephemeral, the /mnt/tmp directory must be recreated on each boot
 # and configured with the appropriate permissions.
+[Unit]
+RequiresMountsFor=/mnt
 
-start on mounted MOUNTPOINT=/mnt
+[Service]
+Type=oneshot
 
-task
-
-script
-    test -d /mnt/tmp || mkdir -m 1777 /mnt/tmp
-    mount --bind /mnt/tmp /tmp
-end script
+ExecStart=/bin/sh -ec 'test -d /mnt/tmp || mkdir -m 1777 /mnt/tmp; mount --bind /mnt/tmp /tmp'

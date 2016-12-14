@@ -142,14 +142,16 @@ def create_key(cx, key_name, key_filename):
 def get_security_group(cx, name):
     groups = cx.connection.get_all_security_groups()
     for group in groups:
-        if group.name == name:
+        if str(group.name) == str(name):
             return group
     return None
 
 def create_security_group(cx, name):
     security_group = get_security_group(cx, name)
+
     if security_group is None:
         print 'Creating security group "%s"...' % name
+
         security_group = cx.connection.create_security_group(name, name)
         # Configure the firewall to allow SSH from anywhere, and any
         # protocol from within the same security group.
@@ -203,7 +205,7 @@ def wait_for_image_state(cx, image_id, expected_state = 'available'):
 def wait_for_instance_state(cx, instance, expected_state = 'running'):
     wait_for_object_state(cx, instance, 'instance', expected_state)
 
-_re_boot_finished = re.compile(r'cloud-init boot finished')
+_re_boot_finished = re.compile(r'Cloud-init')
 _re_host_keys = re.compile(
     r'-----BEGIN SSH HOST KEY KEYS-----(.*)-----END SSH HOST KEY KEYS-----',
     re.DOTALL)
@@ -653,15 +655,18 @@ def find_feature(cx, feature, recursive = True, additional = None):
 ###
 
 def configure_tmp(cx):
-    tmp_config = os.path.join(cx.root_dir, 'etc', 'init', 'tmp.conf')
+    tmp_config = os.path.join(cx.root_dir, 'etc', 'systemd', 'system', 'tmp.service')
 
-    remote_copy(cx, tmp_config, 'tmp.conf')
+    remote_copy(cx, tmp_config, 'tmp.service')
     remote_commands(cx, [
-        'sudo chown root:root tmp.conf',
-        'sudo chmod 644 tmp.conf',
-        'sudo mv tmp.conf /etc/init/tmp.conf',
-        'sudo service tmp start',
+        'sudo chown root:root tmp.service',
+        'sudo chmod 644 tmp.service',
+        'sudo mv tmp.service /etc/systemd/system/tmp.service',
+        'sudo systemctl start tmp'
     ])
+    #remote_commands(cx, [
+    #    'sudo systemctl status tmp.service',
+    #    'sudo journalctl -xe'])
 
 def configure_pip_install(cx, packages):
     remote_commands(cx, [
@@ -672,14 +677,14 @@ def configure_cuda_base(cx):
     # This installs ONLY the toolkit part of CUDA, which is enough to
     # run the CUDA compiler but not enough to run CUDA itself.
     remote_commands(cx, [
-        'wget --progress=dot:mega http://developer.download.nvidia.com/compute/cuda/5_5/rel/installers/cuda_5.5.22_linux_64.run',
-        'echo "96eed5d5912ec39b986aae4d2a9e47258e82b6fd  cuda_5.5.22_linux_64.run" | shasum --check',
-        'TERM=xterm sudo sh cuda_5.5.22_linux_64.run -silent -toolkit',
+        'wget --progress=dot:mega https://developer.nvidia.com/compute/cuda/8.0/prod/local_installers/cuda_8.0.44_linux-run',
+        'echo "016fe98f55a49e36479602da7b8d12a130b6c83e  cuda_8.0.44_linux-run" | shasum --check',
+        'TERM=xterm sudo sh cuda_8.0.44_linux-run -silent -toolkit',
         # The installer doesn't provide a meaningful return value,
         # so check for success manually.
-        'test -d /usr/local/cuda-5.5',
-        r'sudo bash -c "source /etc/environment && echo \"PATH=\\\"\$PATH:/usr/local/cuda-5.5/bin\\\"\" > /etc/environment"',
-        'rm cuda_5.5.22_linux_64.run',
+        'test -d /usr/local/cuda-8.0',
+        r'sudo bash -c "source /etc/environment && echo \"PATH=\\\"\$PATH:/usr/local/cuda-8.0/bin\\\"\" > /etc/environment"',
+        'rm cuda_8.0.44_linux-run',
     ])
 
 def configure_cuda_full(cx):
@@ -693,21 +698,21 @@ def configure_cuda_full(cx):
     time.sleep(5.0)
     wait_for_remote_shell(cx)
     remote_commands(cx, [
-        'wget --progress=dot:mega http://developer.download.nvidia.com/compute/cuda/5_5/rel/installers/cuda_5.5.22_linux_64.run',
-        'echo "96eed5d5912ec39b986aae4d2a9e47258e82b6fd  cuda_5.5.22_linux_64.run" | shasum --check',
-        'TERM=xterm sudo sh cuda_5.5.22_linux_64.run -silent -driver -toolkit',
+        'wget --progress=dot:mega https://developer.nvidia.com/compute/cuda/8.0/prod/local_installers/cuda_8.0.44_linux-run',
+        'echo "016fe98f55a49e36479602da7b8d12a130b6c83e  cuda_8.0.44_linux-run" | shasum --check',
+        'TERM=xterm sudo sh cuda_8.0.44_linux-run -silent -driver -toolkit',
         # The installer doesn't provide a meaningful return value,
         # so check for success manually.
-        'test -d /usr/local/cuda-5.5',
-        r'sudo bash -c "source /etc/environment && echo \"PATH=\\\"\$PATH:/usr/local/cuda-5.5/bin\\\"\" > /etc/environment"',
+        'test -d /usr/local/cuda-8.0',
+        r'sudo bash -c "source /etc/environment && echo \"PATH=\\\"\$PATH:/usr/local/cuda-8.0/bin\\\"\" > /etc/environment"',
         r'sudo bash -c "echo \"# CUDA Libraries\" >> /etc/ld.so.conf.d/cuda.conf"',
-        r'sudo bash -c "echo \"/usr/local/cuda-5.5/lib64\" >> /etc/ld.so.conf.d/cuda.conf"',
+        r'sudo bash -c "echo \"/usr/local/cuda-8.0/lib64\" >> /etc/ld.so.conf.d/cuda.conf"',
         r'sudo bash -c "echo \"/lib\" >> /etc/ld.so.conf.d/cuda.conf"',
         'sudo ldconfig',
         'sudo chown root:root nvidia_gpu.conf',
         'sudo chmod 644 nvidia_gpu.conf',
         'sudo mv nvidia_gpu.conf /etc/init/nvidia_gpu.conf',
-        'rm cuda_5.5.22_linux_64.run',
+        'rm cuda_8.0.44_linux-run',
     ])
 
 def configure_timezone(cx):
@@ -771,7 +776,7 @@ def configure_krb5_server(cx):
         # random. Without this command, Amazon EC2 has trouble
         # gathering enough entropy to satisfy Kerberos, and the
         # command to create a KDC will take a very logn time.
-        'sudo rngd -r /dev/urandom -o /dev/random -t 1',
+        #'sudo rngd -r /dev/urandom -o /dev/random -t 1',
 
         # Create Kerberos database.
         'unset HISTFILE', # protect passwords
@@ -1576,6 +1581,7 @@ def driver_create_user_helper(cx, username, fullname, given_name, surname):
     uid = cx.state['next_available_uid']
     cx.state['next_available_uid'] += 1
 
+    print password
     create_user(cx, username, password, fullname, given_name, surname, uid)
 
     for cluster_name in cx.state['clusters'].iterkeys():
