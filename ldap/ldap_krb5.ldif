@@ -1,0 +1,15 @@
+#The FQDN of the Kerberos KDC.
+olcSaslHost: {krb5_kdc_hostname}
+
+#The Kerberos realm name
+olcSaslRealm: {krb5_realm}
+
+#disallow insecure authentication mechanisms such as plain passwords
+olcSaslSecProps: noplain,noactive,noanonymous,minssf=56
+
+#by default, the DN of an authorized Kerberos client takes the form
+olcAuthzRegexp: {{0}}"uid=([^/]*),{ldap_top},cn=GSSAPI,cn=auth" "uid=$1,ou=people,{ldap_base}"
+olcAuthzRegexp: {{1}}"uid=host/([^/]*).{krb5_domain},cn=us-west-2.compute.internal,cn=gssapi,cn=auth" "cn=$1,ou=hosts,{ldap_base}"
+
+#administrative user map, assumes existence of cn=admin,cn=config
+olcAuthzRegexp: {{2}}"uid=ldap/admin,{ldap_top},cn=gssapi,cn=auth" "cn=admin,cn=config"

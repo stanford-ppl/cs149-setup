@@ -1,0 +1,18 @@
+Hi {first_name},
+
+We have created an account for you on the machines we will be using for {assignment_number}. Here are your login credentials:
+
+Username: {username}
+Password: {password}
+
+You can access the {assignment_number} machines by SSH'ing into the head node:
+
+ssh {username}@{head_node_name}
+
+Please change your password at your earliest convenience. You can do this with the passwd command once you have logged in to the head node.
+
+If you have trouble logging in, please send an email to {reply_to_address} and we will get you access as soon as possible.
+
+Your {course_number} TAs,
+
+{course_assistant_names}

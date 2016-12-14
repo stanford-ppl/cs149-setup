@@ -1,0 +1,40 @@
+There are 1 devices.
+
+This is 1 device supporting CUDA.
+Device 0 is called GRID K520
+	Device Properties:
+		Has timeout enabled: 0
+		ECC enabled: 0
+		Clock rate 797000000 Hz
+		Compute capability: 3.0
+		Compute mode: 0
+		Concurrent kernels: 1
+		Integrated device: 0
+		Supports unified addressing: 1
+	Compute Properties:
+		Number of SMs: 8
+		Warp size: 32 threads
+		Maximum threads per CTA: 1024
+		Maximum threads per SM: 2048
+		Maximum warps per CTA: 32
+		Maximum warps per SM: 64
+		Maximum grid size: 2147483647 65535 65535 
+		Maximum CTA size: 1024 1024 64 
+	Memory Properties:
+		Total global memory: 4294770688 bytes
+		Total constant memory: 65536 bytes
+		L2 cache size: 524288 bytes
+		Shared memory per block: 49152 bytes
+		Registers per block: 65536
+		Stack size per thread: 1024 bytes
+		Malloc heap size: 8388608 bytes
+		Printf buffer size: 1048576 bytes
+		Memory bus width: 256 bits
+		Memory pitch: 2147483647 bytes
+	PCI-E Xfer Properties:
+		Number of asynchronous engines (async-copy enabled): 2
+		Can Map Host Memory: 1
+		PCI device ID: 3
+		PCI bus ID: 0
+
+

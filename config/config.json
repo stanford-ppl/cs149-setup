@@ -1,0 +1,518 @@
+{
+
+    "Modules": {
+        "tmp": {
+            "Commands": [
+                ["configure", "tmp"]
+            ],
+            "Provides": [],
+            "Requires": []
+        },
+        "package_base": {
+            "Commands": [
+                ["package", [
+                    "autoconf",
+                    "build-essential",
+                    "cmake",
+                    "dos2unix",
+                    "emacs",
+                    "finger",
+                    "gdb",
+                    "git",
+                    "htop",
+                    "krb5-user",
+                    "ldap-auth-client",
+                    "ldap-utils",
+                    "libjpeg-dev",
+                    "libpam-foreground",
+                    "libpam-krb5",
+                    "libsasl2-modules-gssapi-mit",
+                    "libtool",
+                    "linux-image-extra-virtual",
+                    "linux-tools",
+                    "lynx",
+                    "mercurial",
+                    "nfs-common",
+                    "ntp",
+                    "openjdk-6-jdk",
+                    "python-dev",
+                    "python-pip",
+                    "python-numpy",
+                    "rake",
+                    "rng-tools",
+                    "rsync",
+                    "screen",
+                    "slay",
+                    "subversion",
+                    "tcsh",
+                    "tmux",
+                    "unzip",
+                    "valgrind",
+                    "zip"
+                ]]
+            ],
+            "Provides": [],
+            "Requires": []
+        },
+        "package_head_node": {
+            "Commands": [
+                ["package", [
+                    "krb5-admin-server",
+                    "krb5-kdc",
+                    "nfs-kernel-server",
+                    "slapd",
+                    "torque-scheduler",
+                    "torque-server",
+                    "sasl2-bin"
+                ]]
+            ],
+            "Provides": [],
+            "Requires": []
+        },
+        "package_compute_node": {
+            "Commands": [
+                ["package", [
+                    "torque-client",
+                    "torque-mom"
+                ]]
+            ],
+            "Provides": [],
+            "Requires": []
+        },
+        "cuda_base": {
+            "Commands": [
+                ["configure", "cuda_base"]
+            ],
+            "Provides": [],
+            "Requires": []
+        },
+        "cuda_full": {
+            "Commands": [
+                ["configure", "cuda_full"]
+            ],
+            "Provides": [],
+            "Requires": []
+        },
+        "timezone": {
+            "Commands": [
+                ["configure", "timezone"]
+            ],
+            "Provides": [],
+            "Requires": []
+        },
+        "ssh_server": {
+            "Commands": [
+                ["configure", "ssh_server"]
+            ],
+            "Provides": [],
+            "Requires": []
+        },
+        "krb5_server": {
+            "Commands": [
+                ["configure", "krb5_server"]
+            ],
+            "Provides": ["krb5"],
+            "Requires": []
+        },
+        "krb5_client": {
+            "Commands": [
+                ["configure", "krb5_client"]
+            ],
+            "Provides": [],
+            "Requires": ["krb5"]
+        },
+        "terminate_krb5_client": {
+            "Commands": [
+                ["configure", "terminate_krb5_client"]
+            ],
+            "Provides": [],
+            "Requires": ["krb5"]
+        },
+        "ldap_server": {
+            "Commands": [
+                ["configure", "ldap_server"]
+            ],
+            "Provides": ["ldap"],
+            "Requires": ["krb5"]
+        },
+        "ldap_client": {
+            "Commands": [
+                ["configure", "ldap_client"]
+            ],
+            "Provides": [],
+            "Requires": ["krb5", "ldap"]
+        },
+        "nfs_server": {
+            "Commands": [
+                ["configure", "nfs_server"]
+            ],
+            "Provides": ["nfs"],
+            "Requires": []
+        },
+        "nfs_client": {
+            "Commands": [
+                ["configure", "nfs_client"]
+            ],
+            "Provides": [],
+            "Requires": ["nfs"]
+        },
+        "torque_server": {
+            "Commands": [
+                ["configure", "torque_server", {
+                    "queue": [{
+                        "name": "batch",
+                        "attributes": {
+                            "queue_type": "execution",
+                            "resources_max.nodes": "1",
+                            "resources_default.nodes": "1",
+                            "resources_max.walltime": "00:05:00",
+                            "resources_default.walltime": "00:05:00",
+                            "resources_min.nice": "0",
+                            "resources_max.nice": "0",
+                            "resources_default.nice": "0",
+                            "max_user_queuable": "1",
+                            "max_user_run": "1",
+                            "enabled": "true",
+                            "started": "true"
+                        }}],
+                    "server": [{
+                        "attributes": {
+                            "default_queue": "batch",
+                            "keep_completed": "900",
+                            "mom_job_sync": "true",
+                            "poll_jobs": "true",
+                            "scheduling": "true"
+                        }
+                    }]
+                }]
+            ],
+            "Provides": ["torque"],
+            "Requires": []
+        },
+        "torque_client": {
+            "Commands": [
+                ["configure", "torque_client"]
+            ],
+            "Provides": [],
+            "Requires": ["torque"]
+        },
+        "terminate_torque_client": {
+            "Commands": [
+                ["configure", "terminate_torque_client"]
+            ],
+            "Provides": [],
+            "Requires": ["torque"]
+        },
+        "hadoop_base": {
+            "Commands": [
+                ["configure", "hadoop_base"]
+            ],
+            "Provides": [],
+            "Requires": []
+        },
+        "hadoop_server": {
+            "Commands": [
+                ["configure", "hadoop_server"]
+            ],
+            "Provides": ["hadoop"],
+            "Requires": []
+        },
+        "hadoop_client": {
+            "Commands": [
+                ["configure", "hadoop_client"]
+            ],
+            "Provides": [],
+            "Requires": ["hadoop"]
+        },
+        "hadoop_dataset": {
+            "Commands": [
+                ["configure", "hadoop_dataset", "cs149-pa3"]
+            ],
+            "Provides": [],
+            "Requires": ["hadoop"]
+        },
+        "hadoop_torque_server": {
+            "Commands": [
+                ["configure", "torque_server", {
+                    "queue": [{
+                        "name": "batch",
+                        "attributes": {
+                            "queue_type": "execution",
+                            "resources_max.nodes": "1",
+                            "resources_default.nodes": "1",
+                            "resources_max.walltime": "00:10:00",
+                            "resources_default.walltime": "00:10:00",
+                            "resources_min.nice": "0",
+                            "resources_max.nice": "0",
+                            "resources_default.nice": "0",
+                            "max_user_queuable": "1",
+                            "max_user_run": "1",
+                            "enabled": "true",
+                            "started": "true"
+                        }}],
+                    "server": [{
+                        "attributes": {
+                            "default_queue": "batch",
+                            "keep_completed": "900",
+                            "mom_job_sync": "true",
+                            "poll_jobs": "true",
+                            "scheduling": "true"
+                        }
+                    }]
+                }]
+            ],
+            "Provides": ["torque"],
+            "Requires": []
+        },
+        "hadoop_torque_client": {
+            "Commands": [
+                ["configure", "hadoop_torque_client"]
+            ],
+            "Provides": [],
+            "Requires": ["torque", "hadoop"]
+        },
+        "terminate_hadoop_torque_client": {
+            "Commands": [
+                ["configure", "terminate_hadoop_torque_client"]
+            ],
+            "Provides": [],
+            "Requires": ["torque", "hadoop"]
+        },
+        "skeleton": {
+            "Commands": [
+                ["configure", "skeleton"]
+            ],
+            "Provides": [],
+            "Requires": []
+        },
+        "monitoring": {
+            "Commands": [
+                ["configure", "monitoring", "*/5 * * * *", [
+                    "monitor.py",
+                    "job_monitor.sh",
+                    "state_monitor.py"
+                ]]
+            ],
+            "Provides": [],
+            "Requires": []
+        },
+        "analysis": {
+            "Commands": [
+                ["configure", "analysis", [
+                    "analyze_wait_time.py"
+                ]]
+            ],
+            "Provides": [],
+            "Requires": []
+        }
+    },
+
+    "Nodes": {
+        "head": {
+            "AMI": {
+                "us-east-1": "ami-26d6d131",
+                "us-west-2": "ami-ba2e86da"
+            },
+            "Instance Type": "m3.large",
+            "Volume Size (GiB)": 64,
+            "Disable API Termination": true,
+            "Image Modules": [
+                "tmp",
+                "package_base",
+                "package_head_node",
+                "cuda_base",
+                "timezone",
+                "ssh_server"
+            ],
+            "Instance Modules": [
+                "krb5_server",
+                "ldap_server",
+                "ldap_client",
+                "nfs_server",
+                "torque_server",
+                "skeleton",
+                "monitoring",
+                "analysis"
+            ],
+            "Terminate Modules": [
+            ]
+        },
+        "compute_CPU": {
+            "AMI": {
+                "us-east-1": "ami-26d6d131",
+                "us-west-2": "ami-ba2e86da"
+            },
+            "Instance Type": "c3.2xlarge",
+            "Volume Size (GiB)": 16,
+            "Disable API Termination": false,
+            "Image Modules": [
+                "tmp",
+                "package_base",
+                "package_compute_node",
+                "timezone",
+                "ssh_server"
+            ],
+            "Instance Modules": [
+                "krb5_client",
+                "ldap_client",
+                "nfs_client",
+                "torque_client"
+            ],
+            "Terminate Modules": [
+                "terminate_torque_client",
+                "terminate_krb5_client"
+            ]
+        },
+        "compute_GPU": {
+            "AMI": {
+                "us-east-1": "ami-b93264d0",
+                "us-west-2": "ami-6cad335c"
+            },
+            "Instance Type": "g2.2xlarge",
+            "Volume Size (GiB)": 16,
+            "Disable API Termination": false,
+            "Image Modules": [
+                "tmp",
+                "package_base",
+                "package_compute_node",
+                "cuda_full",
+                "timezone",
+                "ssh_server"
+            ],
+            "Instance Modules": [
+                "krb5_client",
+                "ldap_client",
+                "nfs_client",
+                "torque_client"
+            ],
+            "Terminate Modules": [
+                "terminate_torque_client",
+                "terminate_krb5_client"
+            ]
+        },
+        "hadoop_head": {
+            "AMI": {
+                "us-east-1": "ami-8e109ebe",
+                "us-west-2": "ami-6aad335a"
+            },
+            "Instance Type": "m3.large",
+            "Volume Size (GiB)": 64,
+            "Disable API Termination": true,
+            "Image Modules": [
+                "tmp",
+                "package_base",
+                "package_head_node",
+                "hadoop_base",
+                "timezone",
+                "ssh_server"
+            ],
+            "Instance Modules": [
+                "krb5_server",
+                "ldap_server",
+                "ldap_client",
+                "nfs_server",
+                "hadoop_torque_server",
+                "skeleton",
+                "monitoring",
+                "analysis"
+            ],
+            "Terminate Modules": [
+            ]
+        },
+        "hadoop_master": {
+            "AMI": {
+                "us-east-1": "ami-8e109ebe",
+                "us-west-2": "ami-6aad335a"
+            },
+            "Instance Type": "m3.large",
+            "Volume Size (GiB)": 16,
+            "Disable API Termination": false,
+            "Image Modules": [
+                "tmp",
+                "package_base",
+                "package_compute_node",
+                "hadoop_base",
+                "timezone",
+                "ssh_server"
+            ],
+            "Instance Modules": [
+                "krb5_client",
+                "ldap_client",
+                "nfs_client",
+                "hadoop_server"
+            ],
+            "Terminate Modules": [
+                "terminate_krb5_client"
+            ]
+        },
+        "hadoop_slave": {
+            "AMI": {
+                "us-east-1": "ami-8e109ebe",
+                "us-west-2": "ami-6aad335a"
+            },
+            "Instance Type": "m3.large",
+            "Volume Size (GiB)": 16,
+            "Disable API Termination": false,
+            "Image Modules": [
+                "tmp",
+                "package_base",
+                "package_compute_node",
+                "hadoop_base",
+                "timezone",
+                "ssh_server"
+            ],
+            "Instance Modules": [
+                "krb5_client",
+                "ldap_client",
+                "hadoop_client"
+            ],
+            "Terminate Modules": [
+                "terminate_krb5_client"
+            ]
+        }
+    },
+
+    "Clusters": {
+        "hadoop_cluster": {
+            "Nodes": [
+                [1, "hadoop_master"],
+                [16, "hadoop_slave"]
+            ],
+            "Modules": [
+                "hadoop_dataset",
+                "hadoop_torque_client"
+            ],
+            "Terminate Modules": [
+                "terminate_hadoop_torque_client"
+            ]
+        }
+    },
+
+    "Recipes": {
+        "pa2": {
+            "Enable": [
+                "head",
+                "compute_CPU"
+            ]
+        },
+        "pa3": {
+            "Enable": [
+                "hadoop_head",
+                "hadoop_cluster"
+            ]
+        },
+        "pa4": {
+            "Enable": [
+                "head",
+                "compute_CPU"
+            ]
+        },
+        "pa5": {
+            "Enable": [
+                "head",
+                "compute_GPU"
+            ]
+        }
+    }
+
+}

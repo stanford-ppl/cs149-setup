@@ -1,0 +1,511 @@
+These notes were taken by yours truly (Elliott Slaughter) the first
+time I was a TA for CS149 in winter 2013. I do not expect them to be
+of any particular use, but if something goes horribly wrong and you
+need to understand the manual install process well enough to debug it,
+I've written down exactly what commands executed (hopefully) in enough
+detail to be useful.
+
+Part of the problem with online guides and manuals (and the reason I
+started making these notes in the first place) is that for complicated
+pieces of software like Kerberos and LDAP:
+
+ 1. Each tool tries to do "everything", which is not at all helpful.
+
+ 2. The manuals for each tool describes it in the most general way
+    possible. For example, LDAP is just a database. Most people use it
+    to store user credentials; but the manual won't explain how to do
+    what 99% of users use it for, at least not in the first 100 pages
+    of the manual.
+
+ 3. Online articles and guides typically focus on solving some
+    specific task (like using LDAP for managing user credentials). But
+    frequently, the authors either don't understand, or don't bother
+    to explain, the more general aspects of the system, so if you
+    don't need exactly what the guide gives you, you are out of luck.
+
+ 4. Some of these systems are customized by each Linux
+    distribution. That means you can't assume instructions for Fedora
+    will work on Ubuntu, or even that instructions for Ubuntu 11.10
+    will work on Ubuntu 12.04. (I'm not joking. This happened to me
+    with LDAP.)
+
+ 5. Some mistakes are unrecoverable. I had a bug where doing two steps
+    in the wrong order caused PAM (the Linux authentication module)
+    not to find Kerberos. This would cause PAM to segfault, which
+    meant I couldn't log in to the machine... and even if I was
+    already logged in, I couldn't use the sudo command to fix
+    anything.
+
+Each of the major systems (Kerberos, LDAP, NFS, Torque) took me about
+one full day to understand and a second full day to be able to
+configure it reliably and be confident I was doing everything the
+right way. If you find that you have to do this yourself... best start
+early. This is not something that you can solve with pure heroism.
+
+Outline:
+
+  * Ubuntu server with:
+      * Torque, configured to give the whole machine to one person at a time
+          * Do not allow people to change their priorities
+          * Keep running time per job as low as possible
+          * Optional: Use PAM to keep users out of machine when job is not active
+      * Kerberos to authenticate user passwords
+          * This also happens to be the only way to get decent security with NFS
+      * LDAP to store user metadata
+          * E.g. uid, gid, full name, etc.
+          * Because Kerberos only stores usernames and passwords, and nothing else
+          * With PAM, we can use this (together with Kerberos) to authenticate users
+      * NFSv4
+          * Otherwise users need to SCP stuff all over the machine
+          * Requires Kerberos to have any decent level of security
+      * Create user accounts for all students, with certs
+          * Scrape course list from mailman
+          * For each user:
+              * Create a Kerberos user account (what they call a "principal")
+              * Create an entry in the LDAP database for the user
+      * OpenJDK
+      * PA5 Only: CUDA
+      * Monitoring of usage level, with ability to spawn new nodes on the fly
+          * Manual for now, maybe automatic later
+
+Resources:
+
+  * Boto (Python library for EC2): http://docs.pythonboto.org/en/latest/ref/ec2.html
+  * NFS: https://help.ubuntu.com/community/SettingUpNFSHowTo
+  * Kerberos: https://help.ubuntu.com/community/Kerberos
+  * LDAP:
+      * https://help.ubuntu.com/community/OpenLDAPServer
+      * http://doc.ubuntu.com/ubuntu/serverguide/C/openldap-server.html
+      * https://help.ubuntu.com/community/SingleSignOn
+      * https://help.ubuntu.com/12.04/serverguide/openldap-server.html
+  * NTP: https://help.ubuntu.com/community/UbuntuTime#Time_Synchronization_using_NTP
+  * Torque: https://help.ubuntu.com/community/TorquePbsHowto
+      * http://docs.adaptivecomputing.com/torque/4-1-3/help.htm
+      * Use PAM to stop people from running on servers when they shouldn't?
+          * http://docs.adaptivecomputing.com/torque/4-1-3/help.htm#topics/3-nodes/hostSecurity.htm
+          * Even with this, users won't be forced off the system unless some sort of "epilogue script" is configured
+      * Note: qsub users can specify "nice" (priority)
+          * http://docs.adaptivecomputing.com/torque/4-1-3/help.htm#topics/2-jobs/requestingRes.htm
+  * slappasswd tool: http://linux.die.net/man/8/slappasswd
+  * kdb5_util create (instead of krb5_newrealm): http://linux.die.net/man/8/kdb5_util
+
+Steps to configuring torque:
+
+# install packages
+$ sudo apt-get install torque-client torque-mom torque-scheduler torque-server
+
+# configure the server's hostname
+$ sudo su -c 'hostname > /var/spool/torque/server_name'
+
+# create server db file
+# Note: Ubuntu seems to do this for you
+$ sudo pbs_server -t create
+
+# use qmgr to configure the system
+$ sudo qmgr # interactive
+# or
+$ sudo qmgr -c COMMAND
+
+> create queue QUEUE_NAME
+> set queue QUEUE_NAME queue_type = execution
+
+> set queue QUEUE_NAME resources_max.nodes = 1:ppn=8
+> set queue QUEUE_NAME resources_default.nodes = 1:ppn=8
+
+> set queue QUEUE_NAME resources_max.walltime = 00:05:00
+> set queue QUEUE_NAME resources_default.walltime = 00:05:00
+
+> set queue QUEUE_NAME resources_min.nice = 0
+> set queue QUEUE_NAME resources_max.nice = 0
+> set queue QUEUE_NAME resources_default.nice = 0
+
+> set queue QUEUE_NAME max_user_run=1
+...
+> set queue QUEUE_NAME enabled = true
+> set queue QUEUE_NAME started = true
+
+> create node HOST_NAME
+> set node HOST_NAME np=NUM_CORES
+...
+
+> set server scheduling = true
+> set server default_queue = QUEUE_NAME
+> set server scheduler_iteration = 600
+> set server node_check_rate = 150
+> set server tcp_timeout = 6
+> set server mom_job_sync = true
+> set server keep_completed = 300
+
+# start/restart services (if necessary)
+$ sudo service torque-server start
+$ sudo service torque-mom start
+
+# Note: For this to work, Torque needs to be able to scp without any
+# prompts (i.e. "do you trust this machine?" etc.). This needs to be
+# true for the *FQDN*.
+
+# torque uses the old init.d system, not upstart
+# to NOT load on system start
+$ sudo update-rc.d -f torque-server remove
+# to load on system start
+$ sudo update-rc.d torque-server defaults
+# repeat for torque-scheduler, torque-mom
+
+# epilogue to forcibly kill anything associated with the user's session
+#ps -o pid --sid SESSION_ID_HERE | tail -n +2 | xargs kill -9
+# Note: session id is argv[5] (aka $5) for epilogue scripts
+# This isn't quite good enough because processes can alter their sesions ID.
+# E.g. if a user leaves screen running, screen will set the session ID to itself
+# so you can't catch all the processes by searching for the old session ID.
+
+
+
+
+Kerberos configuration steps:
+Server:
+# Interactive:
+#   default realm name: US-WEST-2.COMPUTE.INTERNAL
+#   servers: ip-10-249-21-7.us-west-2.compute.internal
+#   admin servers: ip-10-249-21-7.us-west-2.compute.internal
+$ sudo apt-get install krb5-kdc krb5-admin-server
+# writes:
+#   /etc/krb5kdc.conf -- not that interesting
+#   /etc/krb5.conf -- this is the one you need (-rw-r--r-- 1 root root)
+
+# Note: requires randomness. type randomly in emacs for 5 minutes :-)
+# Interactive:
+#   admin password: noTGTBpVPY21A3xA23Dw78UKZ4zri9Hb
+# (use openssl rand -base64 30)
+$ sudo krb5_newrealm
+# If you get tired of waiting:
+$ sudo apt-get install rng-tools
+$ sudo rngd -r /dev/urandom -o /dev/random -t 1
+
+# For each user to add:
+# Interactive:
+#   password: kerb
+$ sudo kadmin.local
+> addprinc elliott
+
+Client:
+# Interative:
+#   default realm name: US-WEST-2.COMPUTE.INTERNAL
+#   servers: ip-10-249-21-7.us-west-2.compute.internal
+#   admin servers: ip-10-249-21-7.us-west-2.compute.internal
+$ sudo apt-get install krb5-user krb5-config
+# Writes /etc/krb5.conf -- like above
+
+# Test Kerberos:
+# Note: need to unblock ports 88 and 750 (UDP)
+$ sudo ufw allow 88
+$ sudo ufw allow 750
+$ kinit -p elliott@US-WEST-2.COMPUTE.INTERNAL
+$ klist
+
+# Note: If you want to ssh via Kerberos, set the following options in
+# /etc/ssh/sshd_config .
+
+# Change to no to disable tunnelled clear text passwords
+PasswordAuthentication yes
+
+# Kerberos options
+KerberosAuthentication yes
+#KerberosGetAFSToken no
+KerberosOrLocalPasswd no
+KerberosTicketCleanup yes
+
+
+
+
+
+
+LDAP for Kerberos:
+https://help.ubuntu.com/community/SingleSignOn
+With some help from https://help.ubuntu.com/community/OpenLDAPServer
+
+Server:
+
+# Interactive:
+#   admin password: bBPCYb7dFrWzBqIv5cWHn0kNTFcxnqPn4fzSWpQv
+# (use openssl rand -base64 30)
+$ sudo apt-get install slapd ldap-utils
+# Note: root password can be found here, in SSHA form
+# Can generate new hashed/salted passwords with slappasswd
+$ sudo ldapsearch -Q -LLL -Y EXTERNAL -H ldapi:/// -b olcDatabase={1}hdb,cn=config olcRootPW
+
+# Edit ldap_krb5.ldif
+
+$ sudo ldapadd -Y EXTERNAL -H ldapi:/// -f ldap_krb5.ldif
+
+# Create keytab for ldap
+$ sudo kadmin.local
+> addprinc -randkey ldap/ip-10-249-21-7.us-west-2.compute.internal@US-WEST-2.COMPUTE.INTERNAL
+> ktadd ldap/ip-10-249-21-7.us-west-2.compute.internal@US-WEST-2.COMPUTE.INTERNAL
+# Adds a key to /etc/krb5.conf (the default location for keytabs on the system)
+
+# Edit /etc/ldap/ldap.conf . Add following:
+
+SASL_MECH GSSAPI
+SASL_REALM US-WEST-2.COMPUTE.INTERNAL
+
+$ sudo apt-get install sasl2-bin libsasl2-2 libsasl2-modules libsasl2-modules-gssapi-mit
+
+# Test with:
+$ kinit -p elliott # this is because I didn't set up a user named ubuntu
+$ ldapsearch -Y GSSAPI
+
+Client:
+
+# Interative:
+#   ldap server: ldap://ip-10-249-21-7.us-west-2.compute.internal
+#   base: dc=us-west-2,dc=compute,dc=internal
+#   ldap version: 3
+#   shadow local: no
+#   ldap require login: no
+$ sudo apt-get install ldap-auth-client libpam-krb5 krb5-user libpam-foreground libsasl2-modules-gssapi-mit
+# Writes /etc/ldap.conf
+
+# Edit /etc/auth-client-config/profile.d/krb-auth-config
+
+$ sudo auth-client-config -a -p krb5ldap
+
+# Test by creating a Kerberos user and an LDAP user and trying to log in.
+# Make sure 389 (TCP) is unblocked on server.
+
+
+
+
+LDAP Configuration (without Kerberos):
+I didn't actually end up doing this in the end, but it is possible to run LDAP without Kerberos. The main disadvantage is that you have to set up your own SSL CA/cert infrastructure if you do this.
+https://help.ubuntu.com/12.04/serverguide/openldap-server.html
+
+Notably, Ubuntu already includes many of the things that the previous guide was trying to have me configure.
+
+Server:
+
+# Interactive:
+#   admin password: asdf
+$ sudo apt-get install slapd ldap-utils
+
+# Copy frontend.ldif file (with customizations)
+
+$ ldapadd -x -D cn=admin,dc=us-west-2,dc=compute,dc=internal -W -f frontend.ldif
+
+# Moving on to SSL certs...
+# Note to self: This is of dubious use, if NFS isn't doing encryption...
+
+$ sudo apt-get install gnutls-bin ssl-cert
+
+$ sudo sh -c "certtool --generate-privkey > /etc/ssl/private/cakey.pem"
+# Edit /etc/ssl/ca.info
+$ sudo certtool --generate-self-signed --load-privkey /etc/ssl/private/cakey.pem --template /etc/ssl/ca.info --outfile /etc/ssl/certs/cacert.pem
+$ sudo certtool --generate-privkey --bits 1024 --outfile /etc/ssl/private/head_node_slapd_key.pem
+# Edit /etc/ssl/head_node.info
+$ sudo certtool --generate-certificate --load-privkey /etc/ssl/private/head_node_slapd_key.pem --load-ca-certificate /etc/ssl/certs/cacert.pem --load-ca-privkey /etc/ssl/private/cakey.pem --template /etc/ssl/head_node.info --outfile /etc/ssl/certs/head_node_slapd_cert.pem
+# Edit /etc/ssl/certinfo.ldif
+$ sudo ldapmodify -Y EXTERNAL -H ldapi:/// -f /etc/ssl/certinfo.ldif
+
+$ sudo adduser openldap ssl-cert
+$ sudo chgrp ssl-cert /etc/ssl/private/head_node_slapd_key.pem
+$ sudo chmod g+r /etc/ssl/private/head_node_slapd_key.pem
+$ sudo chmod o-r /etc/ssl/private/head_node_slapd_key.pem
+$ sudo chgrp ssl-cert /etc/ssl/private/cakey.pem
+$ sudo chmod g+r /etc/ssl/private/cakey.pem
+$ sudo chmod o-r /etc/ssl/private/cakey.pem
+
+$ sudo service slapd restart
+
+# Check /var/log/syslog to see if it started?
+
+Client:
+
+# Interactive:
+# server URI: ldap://ip-10-249-58-247.us-west-2.compute.internal
+# DN of search base: dc=us-west-2,dc=compute,dc=internal
+# LDAP version: 3
+# local root db: yes
+# db require login: no
+# admin DN: cn=admin,dc=us-west-2,dc=compute,dc=internal
+# admin PW: asdf
+$ sudo apt-get install libnss-ldap
+# Note to self: these settings are going into /etc/ldap.conf
+
+$ sudo auth-client-config -t nss -p lac_ldap
+$ sudo pam-auth-update
+
+# Does it work? Not sure.
+
+# This works:
+
+$ sudo apt-get install ldap-utils
+$ ldapsearch -H ldap://ip-10-249-58-247.us-west-2.compute.internal -D cn=admin,dc=us-west-2,dc=compute,dc=internal -W
+
+# Make ABSOLUTELY sure that the URI has exactly TWO slashes after the colon.
+
+Note to self: Don't need ldapscripts; I can't get them to work, and they aren't doing anything I couldn't do myself.
+
+State at end of experiment:
+
+/etc/ldap/ldap.conf -- from ldap-utils/slapd
+/etc/ldap.conf -- from libnss-ldap
+/etc/ldap.secret -- from libnss-ldap
+
+
+
+NFSv4 with NO SECURITY WHATSOEVER:
+https://help.ubuntu.com/community/NFSv4Howto
+
+Server:
+
+$ sudo apt-get install nfs-kernel-server
+
+$ sudo mkdir /export
+$ sudo mkdir /export/home
+
+# For this session:
+$ sudo mount --bind /home /export/home
+# For future sessions add this to /etc/fstab :
+# /home/users	/export/users	none	bind	0	0
+
+# Edit /etc/exports and append:
+# Note: This is ABSOLUTELY AWFUL for security. (Use Kerberos if you care.)
+# With this setup, ANYONE can access the NFS server, and we don't even make a half-hearted attempt at host-based security (not that it would help anyway).
+/export       10.0.0.0/8(rw,sync,fsid=0,crossmnt,no_subtree_check)
+/export/home  10.0.0.0/8(rw,sync,no_subtree_check)
+
+$ sudo service nfs-kernel-server restart
+
+# Testing:
+$ sudo exportfs -v
+# Should list mount points
+
+Client:
+
+$ sudo apt-get install nfs-common
+
+# Need to unblock port 2049 (TCP)? (Not sure if this applies to Kerberos.)
+
+$ sudo mount ip-10-248-119-108.us-west-2.compute.internal:/home /home
+
+# Success?
+
+
+
+NFSv4 with Kerberos:
+https://help.ubuntu.com/community/NFSv4Howto#NFSv4_with_Kerberos
+http://askubuntu.com/questions/118625/ec2-kernel-without-rpcsec-gss-krb5-mod
+
+Server:
+
+$ sudo apt-get install nfs-kernel-server
+
+$ sudo mkdir /export
+$ sudo mkdir /export/home
+
+# For this session:
+$ sudo mount --bind /home /export/home
+# For future sessions add this to /etc/fstab :
+# /home/users	/export/users	none	bind	0	0
+
+# Keytab for server
+$ sudo kadmin.local
+> addprinc -randkey nfs/ip-10-248-119-108.us-west-2.compute.internal@US-WEST-2.COMPUTE.INTERNAL
+> ktadd nfs/ip-10-248-119-108.us-west-2.compute.internal@US-WEST-2.COMPUTE.INTERNAL
+
+# Edit /etc/default/nfs-kernel-server and set:
+# NEED_SVCGSSD=yes
+
+# Edit /etc/exports and append:
+# Note: May need to change sync to async if performance is bad.
+/export       gss/krb5(rw,sync,fsid=0,crossmnt,no_subtree_check)
+/export/home  gss/krb5(rw,sync,no_subtree_check)
+
+$ sudo service nfs-kernel-server restart
+
+# Testing:
+$ sudo exportfs -v
+# Should list mount points
+
+Client:
+
+$ sudo apt-get install nfs-common
+
+server$ sudo kadmin.local
+server$ addprinc -randkey nfs/ip-10-252-170-138.us-west-2.compute.internal@US-WEST-2.COMPUTE.INTERNAL
+server$ ktadd -keytab /root/nfs-client.keytab nfs/ip-10-252-170-138.us-west-2.compute.internal@US-WEST-2.COMPUTE.INTERNAL
+# Copy /root/nfs-client.keytab from server to client's /etc/krb5.keytab
+# (Should be chmod 600 when it arrives.)
+
+# Need to unblock port 2049 (TCP)? (Not sure if this applies to Kerberos.)
+
+$ sudo mount -t nfs4 -o sec=krb5 ip-10-248-119-108.us-west-2.compute.internal:/home /home
+# improper mount option?
+
+$ sudo mount ip-10-248-119-108.us-west-2.compute.internal:/home /home
+# access denied
+
+# Trying some extra kernel modules:
+$ sudo apt-get install linux-image-extra-virtual
+
+# Edit /etc/krb5.conf and add:
+[domain_realm]
+        .us-west-2.compute.internal = US-WEST-2.COMPUTE.INTERNAL
+        us-west-2.compute.internal = US-WEST-2.COMPUTE.INTERNAL
+
+# Edit /etc/default/nfs-common and set:
+NEED_GSSD=yes
+
+# Note: If you didn't set the line above, then gssd will refuse to
+# start even if you explicitly tell it to.
+$ sudo service gssd start
+
+# Success!
+
+
+
+CUDA 5.0:
+https://developer.nvidia.com/cuda-downloads
+http://sn0v.wordpress.com/2012/12/07/installing-cuda-5-on-ubuntu-12-04/
+
+Note: This is running on an Amazon cg1.4xlarge node. Obviously none of
+this will work on a node without a GPU on it!
+
+Note: Currently I'm using Ubuntu 12.04, but CUDA 5.0 is only
+officially available for Ubuntu 11.10 and 10.04 at the time of
+writing. I'm using the version for 11.10, and that seems to work.
+
+# Blacklist existing GPU drivers
+$ sudo sh -c "echo \"blacklist nouveau\" >> /etc/modprobe.d/blacklist.conf"
+
+# Reboot
+$ sudo reboot
+
+# Install CUDA
+$ wget http://developer.download.nvidia.com/compute/cuda/5_0/rel-update-1/installers/cuda_5.0.35_linux_64_ubuntu11.10-1.run
+$ sudo sh cuda_5.0.35_linux_64_ubuntu11.10-1.run -silent -driver -toolkit
+
+# Add CUDA to ld.so.conf
+$ sudo sh -c "echo \"# CUDA Libraries\" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf"
+$ sudo sh -c "echo \"/usr/local/cuda-5.0/lib64\" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf"
+$ sudo sh -c "echo \"/lib\" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf"
+$ sudo ldconfig
+
+# Add CUDA to PATH
+
+$ sudo bash -c "source /etc/environment && echo \"PATH=\\\"$PATH:/usr/local/cuda-5.0/bin\\\"\" > /etc/environment"
+
+# Note: Do this for however many GPUs you have.
+# (The cg1.4xlarge nodes have 2 GPUs.)
+$ sudo mknod -m 666 /dev/nvidia0 c 195 0
+$ sudo mknod -m 666 /dev/nvidia1 c 195 1
+# And this only once.
+$ sudo mknod -m 666 /dev/nvidiactl c 195 255
+
+# Troubleshooting:
+# Check the hardware (should list the graphics card)
+$ lspci
+
+# Check the kernel modules
+$ lsmod | grep nvidia
+
+# Run your CUDA code.

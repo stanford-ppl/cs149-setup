@@ -1,0 +1,7 @@
+dn: ou=People,{ldap_base}
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Groups,{ldap_base}
+objectClass: organizationalUnit
+ou: Groups

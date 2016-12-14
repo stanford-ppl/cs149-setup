@@ -1,0 +1,4 @@
+dn: cn={groupname},ou=Groups,{ldap_base}
+objectClass: posixGroup
+cn: {groupname}
+gidNumber: {gid}

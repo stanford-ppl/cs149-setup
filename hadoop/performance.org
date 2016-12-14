@@ -1,0 +1,115 @@
+* m1.large/16 m1.small (split us-west-2a/us-west-2b)
+** cost: $28.80/day $201.60/week
+** hdparm -t /dev/xvda1 64.88 MB/sec
+** hdparm -t /dev/xvdb 342.59 MB/sec
+** 8gb q2
+*** toneil-20120221-192054: 16m20.508s
+* m1.large/16 m1.medium (all us-west-2a)
+** cost: $51.84/day $362.88/week
+** hdparm -t /dev/xvda1 64.33 MB/sec
+** hdparm -t /dev/xvdb 553.80 MB/sec
+** 8gb q1
+*** toneil-20120221-192054: 7m56.258s
+*** hkhaitan-20130221-203237: 12m29.625s
+** 8gb q2
+*** toneil-20120221-192054: 7m54.977s
+*** hkhaitan-20130221-203237: 18m39.854s
+* m1.large/32 m1.medium (all us-west-2a)
+** cost: $97.92/day $685.44/week
+** hdparm -t /dev/xvda1 60.63 MB/sec
+** hdparm -t /dev/xvdb 679.23 MB/sec
+** 8gb q1
+*** toneil-20120221-192054: 4m31.641s
+*** hkhaitan-20130221-203237: 6m34.047s
+** 8gb q2
+*** toneil-20120221-192054: 4m22.043s
+*** hkhaitan-20130221-203237: 9m45.635s
+** 4gb q1
+*** toneil-20120221-192054: 2m31.568s
+*** hkhaitan-20130221-203237: 3m38.258s
+** 4gb q2
+*** toneil-20120221-192054: 2m46.377s
+*** hkhaitan-20130221-203237: 5m12.326s
+** 2gb q1
+*** toneil-20120221-192054: 1m46.337s
+*** hkhaitan-20130221-203237: 2m7.979s
+** 2gb q2
+*** toneil-20120221-192054: 1m43.904s
+*** hkhaitan-20130221-203237: 3m1.637s
+** 1gb q1
+*** toneil-20120221-192054: 1m34.139s
+*** hkhaitan-20130221-203237: 2m4.232s
+** 1gb q2
+*** toneil-20120221-192054: 1m39.233s
+*** hkhaitan-20130221-203237: 2m52.714s
+* m1.large/16 m1.large (all us-west-2a)
+** cost: $97.92/day $685.44/week
+** hdparm -t /dev/xvda1 62.24 MB/sec
+** hdparm -t /dev/xvdb 679.86 MB/sec
+** 8gb q1
+*** toneil-20120221-192054: 4m29.699s
+*** hkhaitan-20130221-203237: 6m36.760s
+** 8gb q2
+*** toneil-20120221-192054: 4m26.192s
+*** hkhaitan-20130221-203237: 10m16.287s
+* m3.large/16 m3.large (all us-west-2b)
+** settings:
+*** 2 map tasks, 2 red tasks, 1750 MB heap
+** cost $91.80/day $642.60/week
+** hdparm -t /dev/xvda1 51.77 MB/sec
+** hdparm -t /dev/xvdb 447.96 MB/sec
+** 8gb q1
+*** toneil-20120221-192054: 4m19.469s
+**** logs
+14/01/29 21:13:18 INFO mapred.JobClient: Job complete: job_201401292052_0002
+14/01/29 21:13:18 INFO mapred.JobClient: Counters: 31
+14/01/29 21:13:18 INFO mapred.JobClient:   Job Counters 
+14/01/29 21:13:18 INFO mapred.JobClient:     Launched reduce tasks=1
+14/01/29 21:13:18 INFO mapred.JobClient:     SLOTS_MILLIS_MAPS=5907445
+14/01/29 21:13:18 INFO mapred.JobClient:     Total time spent by all reduces waiting after reserving slots (ms)=0
+14/01/29 21:13:18 INFO mapred.JobClient:     Total time spent by all maps waiting after reserving slots (ms)=0
+14/01/29 21:13:18 INFO mapred.JobClient:     Rack-local map tasks=9
+14/01/29 21:13:18 INFO mapred.JobClient:     Launched map tasks=146
+14/01/29 21:13:18 INFO mapred.JobClient:     Data-local map tasks=137
+14/01/29 21:13:18 INFO mapred.JobClient:     SLOTS_MILLIS_REDUCES=206153
+14/01/29 21:13:18 INFO mapred.JobClient:   File Input Format Counters 
+14/01/29 21:13:18 INFO mapred.JobClient:     Bytes Read=8587509760
+14/01/29 21:13:18 INFO mapred.JobClient:   File Output Format Counters 
+14/01/29 21:13:18 INFO mapred.JobClient:     Bytes Written=709
+14/01/29 21:13:18 INFO mapred.JobClient:   FileSystemCounters
+14/01/29 21:13:18 INFO mapred.JobClient:     FILE_BYTES_READ=97767
+14/01/29 21:13:18 INFO mapred.JobClient:     HDFS_BYTES_READ=8589950720
+14/01/29 21:13:18 INFO mapred.JobClient:     FILE_BYTES_WRITTEN=7015669
+14/01/29 21:13:18 INFO mapred.JobClient:     HDFS_BYTES_WRITTEN=709
+14/01/29 21:13:18 INFO mapred.JobClient:   Map-Reduce Framework
+14/01/29 21:13:18 INFO mapred.JobClient:     Map output materialized bytes=98529
+14/01/29 21:13:18 INFO mapred.JobClient:     Map input records=2623094
+14/01/29 21:13:18 INFO mapred.JobClient:     Reduce shuffle bytes=98529
+14/01/29 21:13:18 INFO mapred.JobClient:     Spilled Records=5112
+14/01/29 21:13:18 INFO mapred.JobClient:     Map output bytes=166537
+14/01/29 21:13:18 INFO mapred.JobClient:     Total committed heap usage (bytes)=100352458752
+14/01/29 21:13:18 INFO mapred.JobClient:     CPU time spent (ms)=5190350
+14/01/29 21:13:18 INFO mapred.JobClient:     Map input bytes=8587302892
+14/01/29 21:13:18 INFO mapred.JobClient:     SPLIT_RAW_BYTES=16128
+14/01/29 21:13:18 INFO mapred.JobClient:     Combine input records=5215
+14/01/29 21:13:18 INFO mapred.JobClient:     Reduce input records=2556
+14/01/29 21:13:18 INFO mapred.JobClient:     Reduce input groups=1
+14/01/29 21:13:18 INFO mapred.JobClient:     Combine output records=2556
+14/01/29 21:13:18 INFO mapred.JobClient:     Physical memory (bytes) snapshot=105378742272
+14/01/29 21:13:18 INFO mapred.JobClient:     Reduce output records=20
+14/01/29 21:13:18 INFO mapred.JobClient:     Virtual memory (bytes) snapshot=358218698752
+14/01/29 21:13:18 INFO mapred.JobClient:     Map output records=5215
+
+*** hkhaitan-20130221-203237: 5m37.931s
+** 8gb q2
+*** toneil-20120221-192054: 4m17.557s
+*** hkhaitan-20130221-203237: 8m30.919s
+** 4gb q1
+*** toneil-20120221-192054: 2m10.160s
+*** hkhaitan-20130221-203237: 2m59.489s
+** 2gb q1
+*** toneil-20120221-192054: 1m23.986s
+*** hkhaitan-20130221-203237: 1m42.183s
+** 1gb q1
+*** toneil-20120221-192054: 0m55.805s
+*** hkhaitan-20130221-203237: 1m9.916s

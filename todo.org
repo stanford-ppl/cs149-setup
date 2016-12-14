@@ -1,0 +1,2 @@
+* move etc ldap nfs krb5 into src (?) directory
+* documentation

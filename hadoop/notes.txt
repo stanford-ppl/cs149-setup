@@ -1,0 +1,197 @@
+These notes were taken by yours truly (Elliott Slaughter) the first
+time I set up Hadoop on Amazon AWS in winter 2013. I do not expect
+them to be of any particular use, but if something goes horribly wrong
+and you need to understand the manual install process well enough to
+debug it, I've written down exactly what commands executed (hopefully)
+in enough detail to be useful.
+
+Resources:
+  * http://hadoop.apache.org/docs/r1.1.1/cluster_setup.html
+  * http://hadoop.apache.org/docs/r1.1.1/core-default.html
+  * http://hadoop.apache.org/docs/r1.1.1/hdfs-default.html
+  * http://hadoop.apache.org/docs/r1.1.1/mapred-default.html
+  * http://hadoop.apache.org/docs/r1.1.1/mapred_tutorial.html#Job+Authorization
+  * http://hadoop.apache.org/docs/r1.1.1/HttpAuthentication.html
+  * http://hadoop.apache.org/docs/r1.1.1/commands_manual.html
+  * http://blog.cloudera.com/blog/2012/03/authorization-and-authentication-in-hadoop/
+  * https://ccp.cloudera.com/display/CDHDOC/Appendix+E+-+Task-controller+Error+Codes
+  * https://ccp.cloudera.com/display/CDHDOC/Appendix+A+-+Troubleshooting#AppendixA-Troubleshooting-Problem4%3AAclusterfailstorunjobsaftersecurityisenabled.
+
+
+
+Wikipedia dataset:
+
+Go to the Wikipedia download page and download pages-articles.xml.bz2:
+http://en.wikipedia.org/wiki/Wikipedia:Database_download#English-language_Wikipedia
+
+$ bunzip2 enwiki-20130102-pages-articles.xml.bz2
+$ mkdir all
+$ cd all
+$ split -a 2 -b 64m ../enwiki-20130102-pages-articles.xml chunk_
+# Note in the future you will probably have to use -a 3 because wikipedia will be > 42 GB.
+
+
+
+A note about Hadoop versions:
+
+As closely as I can tell, the Hadoop version tree looks something like this:
+
+       2.0   ...
+        |     |
+1.1     |     |
+ |     0.23   |
+ |       \__  |
+1.0         \ |
+ |     0.22  \|
+ |      |     |
+ |     0.21   |
+  \    /      |
+   \  /       |
+    \/        |
+   0.20       |
+     \        |
+      ...     |
+        \____ |
+             \|
+              |
+            trunk
+
+As of January 2013, 1.0.4 is designated stable, 1.1.1 is designated
+beta, and 2.0.2 is designated alpha. Note that the designations are a
+bit strange because, as you can see above, these two trees really
+don't overlap at all. The new 2.0, despite being "alpha", contains
+features which other "stable" software packages already depend
+on. That said, for PA3 we don't actually need those features, so we're
+going with 1.1.1 for now.
+
+Note that the APIs are incompatible between versions, so if you switch
+between versions expect to make some changes to make everything work.
+
+Hadoop download mirror:
+http://apache.claz.org/hadoop/common/hadoop-1.1.1/
+
+
+
+Hadoop standalone configuration:
+http://hadoop.apache.org/docs/r1.1.1/single_node_setup.html
+Works as described.
+
+
+
+Hadoop pseudo-distributed operation:
+http://hadoop.apache.org/docs/r1.1.1/single_node_setup.html
+
+Note that you need to create an ssh key because Hadoop hardcodes
+localhost instead of reading the configuration, and without an FQDN
+GSSAPI authentication doesn't work.
+
+Also note that to set JAVA_HOME, add
+
+export JAVA_HOME=/usr/lib/jvm/default-java
+
+to the *top* of .bashrc so that it gets set for non-login shells.
+
+Otherwise works as described.
+
+
+
+Hadoop cluster operation with NO SECURITY WHATSOEVER:
+http://hadoop.apache.org/docs/r1.1.1/cluster_setup.html
+
+# Create hadoop user
+$ sudo adduser --system --shell /bin/bash --no-create-home --group hadoop
+# Make sure the extracted tarball is owned by this user.
+# This user needs to be able to ssh to any machine in the cluster without using a password.
+# (For now, I'm logging in as this user directly and running kinit.)
+# All the following commands are run as this user (unless otherwise marked).
+
+# All the following paths are relative to where hadoop was extracted.
+# E.g. /usr/local/hadoop-1.1.1
+
+# Edit conf/hadoop-env.sh and set
+export JAVA_HOME=/usr/lib/jvm/default-java
+export HADOOP_HEAPSIZE=3000
+# Do I need to copy this around the machine?
+# Yes, otherwise start-dfs.sh reports that JAVA_HOME is unset on some nodes.
+
+# Note: Some of these will be difficult to configure until at least two nodes are created.
+# Edit conf/core-site.xml
+# Edit conf/hdfs-site.xml
+# Edit conf/mapred-site.xml
+# Edit conf/slaves (i.e. a list of all DataNode's and TaskTracker's)
+# Edit conf/masters (i.e. a list containing the NameNode and JobTracker)
+# Do I need to copy these around the machine?
+# Yes, otherwise I get an error using HDFS.
+
+# Now try to start it
+# Note: You have to be on the machine you're trying to start service on
+NameNode$ bin/hadoop namenode -format
+NameNode$ bin/start-dfs.sh
+JobTracker$ bin/start-mapred.sh
+
+# Testing
+NameNode$ lynx http://localhost:50070/dfshealth.jsp
+JobTracker$ lynx http://localhost:50030/jobtracker.jsp
+
+$ bin/hadoop fs -put conf input
+$ bin/hadoop jar hadoop-examples-*.jar grep input output 'dfs[a-z.]+'
+$ bin/hadoop fs -cat output/*
+
+# Shutting down (or restarting)
+$ bin/stop-all.sh
+
+# Alternatively, it looks like you can start things this way:
+$ bin/hadoop-daemon.sh start namenode
+$ bin/hadoop-daemon.sh start secondarynamenode
+$ bin/hadoop-daemon.sh start jobtracker
+$ bin/hadoop-daemon.sh start datanode
+$ bin/hadoop-daemon.sh start tasktracker
+
+# Note: You need to create a home directory in HDFS for each user:
+$ bin/hadoop fs -mkdir /user/${USERNAME}
+$ bin/hadoop fs -chmod 750 /user/${USERNAME}
+$ bin/hadoop fs -chown ${USERNAME} /user/${USERNAME}
+
+# Note: Before running any jobs as non-root users:
+$ bin/hadoop fs -chmod 777 /tmp/hadoop-hadoop/mapred/staging
+# Note: Might need to make it first
+$ bin/hadoop fs -mkdir /tmp/hadoop-hadoop/mapred/staging
+
+# Note: If you would like to start the demons manually, you can do the
+# following instead of bin/start-dfs.sh
+NameNode$ bash -c "cd bin && . ./hadoop-config.sh && ./hadoop-daemon.sh --config \$HADOOP_CONF_DIR start namenode"
+DataNode$ bash -c "cd bin && . ./hadoop-config.sh && ./hadoop-daemon.sh --config \$HADOOP_CONF_DIR start datanode"
+JobTracker$ bash -c "cd bin && . ./hadoop-config.sh && ./hadoop-daemon.sh --config \$HADOOP_CONF_DIR start jobtracker"
+TaskTracker$ bash -c "cd bin && . ./hadoop-config.sh && ./hadoop-daemon.sh --config \$HADOOP_CONF_DIR start tasktracker"
+# This has the additional advantage that you don't need to give the
+# hadoop user special permission to SSH around the machine to start
+# the cluster.
+
+
+
+Hadoop cluster operation with LinuxTaskController:
+
+Provides security in the sense that jobs now run as under the owner's
+user account, rather than the hadoop root user. Still no encryption
+though, so anyone who is able to access the network traffic could pwn
+you.
+
+# Set ownership and permissions for task-controller
+$ sudo chown root:hadoop bin/task-controller
+$ sudo chmod 6050 bin/task-controller
+
+# Edit conf/mapred-site.xml
+Add mapred.local.dir
+Add mapred.task.tracker.task-controller
+# Edit taskcontroller.cfg
+Add mapred.local.dir
+Add hadoop.log.dir
+Add mapred.tasktracker.tasks.sleeptime-before-sigkill
+Add mapreduce.tasktracker.group
+# Note: mapred.local.dir needs to be set to /tmp/mapred/local
+
+# Move taskcontroller.cfg into place
+$ sudo mdkir /etc/hadoop
+$ sudo chown root:root /usr/local/hadoop-1.1.1/conf/taskcontroller.cfg
+$ sudo chmod 400 /usr/local/hadoop-1.1.1/conf/taskcontroller.cfg
+$ sudo mv /usr/local/hadoop-1.1.1/conf/taskcontroller.cfg /etc/hadoop/taskcontroller.cfg

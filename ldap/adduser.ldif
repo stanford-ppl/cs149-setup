@@ -1,0 +1,14 @@
+dn: uid={username},ou=People,{ldap_base}
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: {username}
+cn: {fullname}
+sn: {surname}
+givenName: {given_name}
+displayName: {fullname}
+uidNumber: {uid}
+gidNumber: {gid}
+gecos: {fullname}
+loginShell: {shell}
+homeDirectory: {homedir}
