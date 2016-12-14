@@ -1,0 +1,8 @@
+.DS_Store
+*~
+*.pyc
+*.pem
+*.csv
+*.pdf
+config/secret.json
+config/state.json
