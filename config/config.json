@@ -391,8 +391,8 @@
         },
         "hadoop_head": {
             "AMI": {
-                "us-east-1": "ami-8e109ebe",
-                "us-west-2": "ami-6aad335a"
+                "us-east-1": "ami-26d6d131",
+                "us-west-2": "ami-ba2e86da"
             },
             "Instance Type": "m3.large",
             "Volume Size (GiB)": 64,
@@ -420,8 +420,8 @@
         },
         "hadoop_master": {
             "AMI": {
-                "us-east-1": "ami-8e109ebe",
-                "us-west-2": "ami-6aad335a"
+                "us-east-1": "ami-26d6d131",
+                "us-west-2": "ami-ba2e86da"
             },
             "Instance Type": "m3.large",
             "Volume Size (GiB)": 16,
@@ -446,8 +446,8 @@
         },
         "hadoop_slave": {
             "AMI": {
-                "us-east-1": "ami-8e109ebe",
-                "us-west-2": "ami-6aad335a"
+                "us-east-1": "ami-26d6d131",
+                "us-west-2": "ami-ba2e86da"
             },
             "Instance Type": "m3.large",
             "Volume Size (GiB)": 16,
