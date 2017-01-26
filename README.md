@@ -49,9 +49,10 @@ To configure an assignment, make a fresh clone of the setup tool and run:
 
     ./setup.py init <recipe> # e.g. pa2
 
-This will query the user for various course metadata, and create keys,
-security groups, and images on EC2. After this completes, create one
-or more nodes or clusters with the commands:
+This will query the user for various course metadata (note: enter strings
+with surrounding quotes), and create keys, security groups, and images on 
+EC2. After this completes, create one or more nodes or clusters with the 
+commands:
 
     ./setup.py create_node <node_type> # e.g. head
     ./setup.py create_cluster <cluster_type> # e.g. hadoop_cluster
