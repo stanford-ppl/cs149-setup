@@ -1011,12 +1011,15 @@ def configure_spark_base(cx):
         'wget --progress=dot:mega http://www-eu.apache.org/dist/spark/spark-2.1.0/spark-2.1.0-bin-hadoop2.4.tgz',
         'sudo tar xfz spark-2.1.0-bin-hadoop2.4.tgz -C /usr/local',
         'sudo mkdir %s' % spark_log_dir,
-        'rm spark-2.1.0-bin-hadoop2.4.tgz'])
+        'rm spark-2.1.0-bin-hadoop2.4.tgz'
+
+        ])
     print "configure_spark_base"
 
 def configure_spark_server(cx):
     """
-    Spins up a Spark Master node.
+    Spins up a Spark Master node, and write the URL to /usr/loca/etc/master
+    so jobs can pull the name. Also installs sbt.
     """
     print 'called configure_spark_server'
     spark_feature = add_feature(cx, 'spark')
@@ -1026,11 +1029,22 @@ def configure_spark_server(cx):
     spark_feature['master_port'] = 7077
     spark_feature['user_dir'] = '/user'
 
+    master_url = "spark://{}:{}".format(\
+            spark_feature['master'], spark_feature['master_port'])
+
     spark_home = '/usr/local/spark-2.1.0-bin-hadoop2.4'
     start_master = spark_home + "/sbin/start-master.sh -h {} -p {}".format(
             spark_feature['master'],
             spark_feature['master_port'])
     remote_commands(cx, [
+        r'sudo apt-get install scala',
+        r'echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list',
+        r'sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823',
+        r'sudo apt-get update',
+        r'sudo apt-get install sbt',
+        r'sudo bash -c "echo \"{}\" > /usr/local/etc/master"'.format(master_url),
+        # NOTE: This depends on the instance type chosen.
+        r'sudo bash -c "echo spark.executor.memory 25g > {}/conf/spark-defaults.conf"'.format(spark_home),
         r'sudo {}'.format(start_master)
         ])
 
@@ -1042,26 +1056,13 @@ def configure_spark_client(cx):
             spark_feature['master'], spark_feature['master_port'])
 
     spark_home = '/usr/local/spark-2.1.0-bin-hadoop2.4'
-    start_worker = spark_home + "/start-slave.sh {}".format(master_url)
+    start_worker = spark_home + "/sbin/start-slave.sh {}".format(master_url)
     remote_commands(cx, [
         r'sudo {}'.format(start_worker)
         ])
 
-def configure_spark_dataset(cx, s3_bucket):
-    spark_feature = find_feature(cx, 'spark')
-    print "configure_spark_dataset"
-    """
-    server_cx = cx.new_node_scope(spark_feature['node'])
-
-    s3_account = cx.secret['AWS IAM Accounts']['S3']
-    copy_s3_to_hdfs(
-        server_cx,
-        's3n://%s:%s@%s/' % (
-            s3_account['AWS Access Key ID'],
-            s3_account['AWS Secrect Access Key'],
-            s3_bucket),
-        '/wikipedia')
-    """
+def configure_spark_dataset(cx, _):
+    pass
 
 def configure_spark_torque_client(cx):
     spark_feature = find_feature(cx, 'spark')
@@ -1567,7 +1568,7 @@ def driver_import_roster(cx):
 
     # Create users.
     for username, first_name, last_name in zip(usernames, first_names, last_names):
-        fullname = ' '.join([first_name, last_name])
+        fullname = first_name + " " + last_name
         print 'Creating account %s for %s...' % (username, fullname)
         driver_create_user_helper(cx, username, fullname, first_name, last_name)
 
