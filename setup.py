@@ -712,12 +712,14 @@ def configure_cuda_full(cx):
     remote_command(cx, 
         r'sudo sh -c "echo \"blacklist nouveau\" >> /etc/modprobe.d/blacklist.conf"')
 
-    subprocess.call([
-            'ssh',
-            '-i', cx.key_filename,
-            '%s@%s' % (cx.username, cx.hostname),
-            r'sudo reboot'])
-    #remote_command(cx,r'sudo reboot')
+    #subprocess.call([
+    #        'ssh',
+    #        '-i', cx.key_filename,
+    #        '%s@%s' % (cx.username, cx.hostname),
+    #        r'sudo reboot'])
+    
+    #command fails sometimes, make sure the instance on the web reboots then just skip
+    remote_command(cx,r'sudo reboot')
     time.sleep(5.0)
     wait_for_remote_shell(cx)
 
@@ -730,6 +732,13 @@ def configure_cuda_full(cx):
     remote_command(cx,
       r'TERM=xterm sudo sh cuda_8.0.44_linux-run -silent -driver -toolkit'
     )
+    #if this fails log into the compute node manually
+    #work on installing cuda manually, 
+    #(1) run 'sudo update-initramfs -u'
+    #(2) check /etc/modprobe.d/nvidia-graphics-drivers.conf
+    #(3) sudo reboot 
+    #(4) sudo sh cuda_8.0.44_linux-run
+    #(5) go back to python script and retry command 
     remote_command(cx,
       'test -d /usr/local/cuda-8.0',
     )
