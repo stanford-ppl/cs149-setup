@@ -364,8 +364,8 @@
         },
         "compute_GPU": {
             "AMI": {
-                "us-east-1": "ami-93d60485",
-                "us-west-2": "ami-36f67556"
+                "us-east-1": "ami-1ac0120c",
+                "us-west-2": "ami-edf6758d"
             },
             "Instance Type": "g2.2xlarge",
             "Volume Size (GiB)": 16,
