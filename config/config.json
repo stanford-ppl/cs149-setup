@@ -449,7 +449,7 @@
                 "us-east-1": "ami-26d6d131",
                 "us-west-2": "ami-ba2e86da"
             },
-            "Instance Type": "m3.large",
+            "Instance Type": "m3.2xlarge",
             "Volume Size (GiB)": 16,
             "Disable API Termination": false,
             "Image Modules": [
@@ -475,7 +475,7 @@
         "spark_cluster": {
             "Nodes": [
                 [1, "spark_master"],
-                [1, "spark_slave"]
+                [10, "spark_slave"]
             ],
             "Modules": [
                 "spark_dataset",
