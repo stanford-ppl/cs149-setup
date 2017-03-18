@@ -328,6 +328,7 @@ def remote_command_retry_handler(cx, thunk, allow_retry):
             print
             print exception.cmd
             print
+            print exception
             option = remote_command_retry_menu()
             if option.lower().strip() == 'retry':
                 continue
@@ -689,14 +690,87 @@ def configure_cuda_base(cx):
 
 def configure_cuda_full(cx):
     # This installs all of CUDA, which makes it quite a bit more involved.
-    gpu_config = os.path.join(cx.root_dir, 'etc', 'init', 'nvidia_gpu.conf')
+    gpu_config = os.path.join(cx.root_dir, 'etc', 'systemd','system', 'nvidia_gpu.conf')
     remote_copy(cx, gpu_config, 'nvidia_gpu.conf')
-    remote_commands(cx, [
-        r'sudo sh -c "echo \"blacklist nouveau\" >> /etc/modprobe.d/blacklist.conf"',
-        'sudo reboot',
+    #throws an error but just SKIP as it actually works fine
+    remote_command(cx, 
+        r'sudo update-initramfs -u')
+    remote_commands(cx,[
+      r'sudo sh -c "echo \"blacklist nouveau\" >> /etc/modprobe.d/nvidia-graphics-drivers.conf"',
+      r'sudo sh -c "echo \"blacklist lbm-nouveau\" >> /etc/modprobe.d/nvidia-graphics-drivers.conf"',
+      r'sudo sh -c "echo \"blacklist nvidia-173\" >> /etc/modprobe.d/nvidia-graphics-drivers.conf"',
+      r'sudo sh -c "echo \"blacklist nvidia-96\" >> /etc/modprobe.d/nvidia-graphics-drivers.conf"',
+      r'sudo sh -c "echo \"blacklist nvidia-current\" >> /etc/modprobe.d/nvidia-graphics-drivers.conf"',
+      r'sudo sh -c "echo \"blacklist nvidia-173-updates\" >> /etc/modprobe.d/nvidia-graphics-drivers.conf"',
+      r'sudo sh -c "echo \"blacklist nvidia-96-updates\" >> /etc/modprobe.d/nvidia-graphics-drivers.conf"',
+      r'sudo sh -c "echo \"blacklist nvidia-96-updates\" >> /etc/modprobe.d/nvidia-graphics-drivers.conf"',
+      r'sudo sh -c "echo \"alias nvidia nvidia_current_updates\" >> /etc/modprobe.d/nvidia-graphics-drivers.conf"',
+      r'sudo sh -c "echo \"alias nouveau off\" >> /etc/modprobe.d/nvidia-graphics-drivers.conf"',
+      r'sudo sh -c "echo \"alias lbm-nouveau off\" >> /etc/modprobe.d/nvidia-graphics-drivers.conf"'
     ])
+
+    remote_command(cx, 
+        r'sudo sh -c "echo \"blacklist nouveau\" >> /etc/modprobe.d/blacklist.conf"')
+
+    #subprocess.call([
+    #        'ssh',
+    #        '-i', cx.key_filename,
+    #        '%s@%s' % (cx.username, cx.hostname),
+    #        r'sudo reboot'])
+    
+    #command fails sometimes, make sure the instance on the web reboots then just skip
+    remote_command(cx,r'sudo reboot')
     time.sleep(5.0)
     wait_for_remote_shell(cx)
+
+    remote_command(cx,
+      r'wget --progress=dot:mega https://developer.nvidia.com/compute/cuda/8.0/prod/local_installers/cuda_8.0.44_linux-run'
+    )
+    remote_command(cx,
+      r'echo "016fe98f55a49e36479602da7b8d12a130b6c83e  cuda_8.0.44_linux-run" | shasum --check'
+    )
+    remote_command(cx,
+      r'TERM=xterm sudo sh cuda_8.0.44_linux-run -silent -driver -toolkit'
+    )
+    #if this fails log into the compute node manually
+    #work on installing cuda manually, 
+    #(1) run 'sudo update-initramfs -u'
+    #(2) check /etc/modprobe.d/nvidia-graphics-drivers.conf
+    #(3) sudo reboot 
+    #(4) sudo sh cuda_8.0.44_linux-run
+    #(5) go back to python script and retry command 
+    remote_command(cx,
+      'test -d /usr/local/cuda-8.0',
+    )
+    remote_command(cx,
+      r'sudo bash -c "source /etc/environment && echo \"PATH=\\\"\$PATH:/usr/local/cuda-8.0/bin\\\"\" > /etc/environment"'
+    )    
+    remote_command(cx,
+      r'sudo bash -c "echo \"# CUDA Libraries\" >> /etc/ld.so.conf.d/cuda.conf"'
+    )    
+    remote_command(cx,
+      r'sudo bash -c "echo \"/usr/local/cuda-8.0/lib64\" >> /etc/ld.so.conf.d/cuda.conf"'
+    )    
+    remote_command(cx,
+      r'sudo bash -c "echo \"/lib\" >> /etc/ld.so.conf.d/cuda.conf"'
+    )
+    remote_command(cx,
+      'sudo ldconfig'
+    )
+    remote_command(cx,
+      'sudo chown root:root nvidia_gpu.conf'
+    )
+    remote_command(cx,
+      'sudo chmod 644 nvidia_gpu.conf'
+    )
+    remote_command(cx,
+      'sudo mv nvidia_gpu.conf /etc/systemd/system/nvidia_gpu.conf',
+    )
+    remote_command(cx,
+      'rm cuda_8.0.44_linux-run'
+    )
+
+    comm="""
     remote_commands(cx, [
         'wget --progress=dot:mega https://developer.nvidia.com/compute/cuda/8.0/prod/local_installers/cuda_8.0.44_linux-run',
         'echo "016fe98f55a49e36479602da7b8d12a130b6c83e  cuda_8.0.44_linux-run" | shasum --check',
@@ -711,9 +785,10 @@ def configure_cuda_full(cx):
         'sudo ldconfig',
         'sudo chown root:root nvidia_gpu.conf',
         'sudo chmod 644 nvidia_gpu.conf',
-        'sudo mv nvidia_gpu.conf /etc/init/nvidia_gpu.conf',
+        'sudo mv nvidia_gpu.conf /etc/systemd/system/nvidia_gpu.conf',
         'rm cuda_8.0.44_linux-run',
     ])
+    """
 
 def configure_timezone(cx):
     remote_commands(cx, [
