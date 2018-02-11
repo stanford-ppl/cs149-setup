@@ -501,30 +501,6 @@ def create_user(cx, username, password, fullname, given_name, surname, uid):
             'shred --remove addgroup.ldif adduser.ldif',
             ])
 
-def create_hdfs_user(cx, username, user_dir):
-    remote_commands(cx, [
-        'sudo su hadoop -c "hadoop fs -mkdir %s/%s"' % (
-            user_dir, username),
-        'sudo su hadoop -c "hadoop fs -chmod 750 %s/%s"' % (
-            user_dir, username),
-        'sudo su hadoop -c "hadoop fs -chown %s %s/%s"' % (
-            username, user_dir, username),
-    ])
-
-def copy_s3_to_hdfs(cx, source, destination):
-    remote_commands(cx, [
-        'unset HISTFILE',
-        'sudo su hadoop -c "hadoop distcp %s %s"' % (
-            source, destination),
-    ])
-
-def start_hadoop_service(cx, service):
-    hadoop_home = '/usr/local/hadoop-1.2.1'
-    remote_commands(cx, [
-        r'sudo su hadoop -c "cd %s/bin && . ./hadoop-config.sh && ./hadoop-daemon.sh --config \$HADOOP_CONF_DIR start %s"' % (
-            hadoop_home, service)
-    ])
-
 def start_services(cx, services):
     remote_commands(
         cx,
@@ -1099,138 +1075,77 @@ def configure_terminate_torque_client(cx):
     # Delete node in Torque
     delete_torque_compute_node(server_cx, cx.node['private_dns_name'])
 
-def configure_hadoop_base(cx):
-    hadoop_home = '/usr/local/hadoop-1.2.1'
-    hadoop_log_dir = '/var/log/hadoop'
+def configure_spark_base(cx):
+    """
+    Installs Spark on each node.
+    """
+    spark_home = '/usr/local/spark-2.1.0-bin-hadoop2.4'
+    spark_log_dir = '/var/log/spark'
     remote_commands(cx, [
-        # Note: We need this UID to be > 1000 so that we can
-        # restrict it in taskcontroller.cfg to avoid running jobs
-        # as the ubuntu admin user.
-        'sudo adduser --firstuid 1001 --disabled-password --gecos "" hadoop',
-        # Note: This is just one of a list of mirrors from:
-        # http://www.apache.org/dyn/closer.cgi/hadoop/common/
-        'wget --progress=dot:mega http://apache.cs.utah.edu/hadoop/common/hadoop-1.2.1/hadoop-1.2.1.tar.gz',
-        'echo "b07b88ca658dc9d338aa84f5c68c809eb7c70964  hadoop-1.2.1.tar.gz" | shasum --check',
-        'sudo tar xfz hadoop-1.2.1.tar.gz -C /usr/local',
-        r'sudo bash -c "source /etc/environment && echo \"PATH=\\\"\$PATH:%s/bin\\\"\" > /etc/environment"' % hadoop_home,
-        'sudo chown root:hadoop %s/bin/task-controller' % hadoop_home,
-        'sudo chmod 6050 %s/bin/task-controller' % hadoop_home,
-        'sudo mkdir %s' % hadoop_log_dir,
-        'sudo chown root:hadoop %s' % hadoop_log_dir,
-        'sudo chmod 775 %s' % hadoop_log_dir,
-        'rm hadoop-1.2.1.tar.gz'])
+        'sudo adduser --firstuid 1001 --disabled-password --gecos "" spark',
+        'wget --progress=dot:mega http://www-eu.apache.org/dist/spark/spark-2.1.0/spark-2.1.0-bin-hadoop2.4.tgz',
+        'sudo tar xfz spark-2.1.0-bin-hadoop2.4.tgz -C /usr/local',
+        'sudo mkdir %s' % spark_log_dir,
+        'rm spark-2.1.0-bin-hadoop2.4.tgz'
 
-def configure_hadoop_helper(cx):
-    hadoop_feature = find_feature(cx, 'hadoop')
+        ])
+    print "configure_spark_base"
 
-    basenames = [
-        'core-site.xml',
-        'hadoop-env.sh',
-        'hdfs-site.xml',
-        'mapred-queue-acls.xml',
-        'mapred-site.xml',
-        'masters',
-        'slaves',
-        'taskcontroller.cfg',
-    ]
-    filenames = [
-        os.path.join(cx.root_dir, 'hadoop', 'conf', basename)
-        for basename in basenames]
+def configure_spark_server(cx):
+    """
+    Spins up a Spark Master node, and write the URL to /usr/loca/etc/master
+    so jobs can pull the name. Also installs sbt.
+    """
+    print 'called configure_spark_server'
+    spark_feature = add_feature(cx, 'spark')
 
-    hadoop_home = '/usr/local/hadoop-1.2.1'
-    substitutions = {
-        'namenode': hadoop_feature['master'],
-        'jobtracker': hadoop_feature['master'],
-        'jobtracker_port': hadoop_feature['jobtracker_port'],
-        'masters': hadoop_feature['master'],
-        'slaves': '',
-        'hadoop_log_dir': '/var/log/hadoop',
-        'mapred_local_dir': '/tmp/mapred/local',
-    }
+    server_name = cx.state['nodes'][spark_feature['node']]['private_dns_name']
+    spark_feature['master'] = server_name
+    spark_feature['master_port'] = 7077
+    spark_feature['user_dir'] = '/user'
 
-    for basename, filename in zip(basenames, filenames):
-        remote_copy_with_substitutions(cx, filename, basename, substitutions)
+    master_url = "spark://{}:{}".format(\
+            spark_feature['master'], spark_feature['master_port'])
+
+    spark_home = '/usr/local/spark-2.1.0-bin-hadoop2.4'
+    start_master = spark_home + "/sbin/start-master.sh -h {} -p {}".format(
+            spark_feature['master'],
+            spark_feature['master_port'])
     remote_commands(cx, [
-        'sudo chown root:root %s' % basename
-        for basename in basenames] + [
-        'sudo chmod 644 %s' % basename
-        for basename in basenames] + [
-        'sudo mv %s %s/conf' % (basename, hadoop_home)
-        for basename in basenames] + [
-        'sudo mkdir /etc/hadoop',
-        'sudo chown root:root %s/conf/taskcontroller.cfg' % hadoop_home,
-        'sudo chmod 400 %s/conf/taskcontroller.cfg' % hadoop_home,
-        'sudo mv %s/conf/taskcontroller.cfg /etc/hadoop/taskcontroller.cfg' % (
-            hadoop_home)
+        r'sudo apt-get install scala',
+        r'echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list',
+        r'sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823',
+        r'sudo apt-get update',
+        r'sudo apt-get install sbt',
+        r'sudo bash -c "echo \"{}\" > /usr/local/etc/master"'.format(master_url),
+        # NOTE: This depends on the instance type chosen.
+        r'sudo bash -c "echo spark.executor.memory 25g > {}/conf/spark-defaults.conf"'.format(spark_home),
+        r'sudo {}'.format(start_master)
         ])
 
-def configure_hadoop_server(cx):
-    hadoop_feature = add_feature(cx, 'hadoop')
+def configure_spark_client(cx):
+    print "configure_spark_client"
+    spark_feature = find_feature(cx, 'spark')
+    server_cx = cx.new_node_scope(spark_feature['node'])
+    master_url = "spark://{}:{}".format(\
+            spark_feature['master'], spark_feature['master_port'])
 
-    server_name = cx.state['nodes'][hadoop_feature['node']]['private_dns_name']
-    hadoop_feature['master'] = server_name
-    hadoop_feature['jobtracker_port'] = 9001
-    hadoop_feature['user_dir'] = '/user'
-
-    configure_hadoop_helper(cx)
-
+    spark_home = '/usr/local/spark-2.1.0-bin-hadoop2.4'
+    start_worker = spark_home + "/sbin/start-slave.sh {}".format(master_url)
     remote_commands(cx, [
-        'sudo su hadoop -c "hadoop namenode -format"',
+        r'sudo {}'.format(start_worker)
         ])
 
-    start_hadoop_service(cx, 'namenode')
+def configure_spark_dataset(cx, _):
+    pass
 
-    mapred_staging_dir = '/tmp/hadoop-hadoop/mapred/staging'
-    remote_commands(cx, [
-        'sudo su hadoop -c "hadoop fs -mkdir %s"' % (
-            mapred_staging_dir),
-        'sudo su hadoop -c "hadoop fs -chmod 777 %s"' % (
-            mapred_staging_dir),
-        'sudo su hadoop -c "hadoop fs -mkdir %s"' % (
-            hadoop_feature['user_dir']),
-    ])
-
-    start_hadoop_service(cx, 'jobtracker')
-
-    for username in cx.state['users'].iterkeys():
-        create_hdfs_user(cx, username, hadoop_feature['user_dir'])
-
-def configure_hadoop_client(cx):
-    hadoop_feature = find_feature(cx, 'hadoop')
-
-    server_cx = cx.new_node_scope(hadoop_feature['node'])
-
-    hadoop_home = '/usr/local/hadoop-1.2.1'
-    remote_commands(server_cx, [
-        r'sudo sh -c "echo \"%s\" >> %s/conf/slaves"' % (
-            cx.state['nodes'][cx.node_name]['private_dns_name'],
-            hadoop_home),
-    ])
-    configure_hadoop_helper(cx)
-    start_hadoop_service(cx, 'datanode')
-    start_hadoop_service(cx, 'tasktracker')
-
-def configure_hadoop_dataset(cx, s3_bucket):
-    hadoop_feature = find_feature(cx, 'hadoop')
-
-    server_cx = cx.new_node_scope(hadoop_feature['node'])
-
-    s3_account = cx.secret['AWS IAM Accounts']['S3']
-    copy_s3_to_hdfs(
-        server_cx,
-        's3n://%s:%s@%s/' % (
-            s3_account['AWS Access Key ID'],
-            s3_account['AWS Secrect Access Key'],
-            s3_bucket),
-        '/wikipedia')
-
-def configure_hadoop_torque_client(cx):
-    hadoop_feature = find_feature(cx, 'hadoop')
-    server_cx = cx.new_node_scope(hadoop_feature['node'])
+def configure_spark_torque_client(cx):
+    spark_feature = find_feature(cx, 'spark')
+    server_cx = cx.new_node_scope(spark_feature['node'])
 
     remote_copy(
         server_cx,
-        os.path.join(cx.root_dir, 'scripts', 'kill_all_hadoop_jobs.sh'),
+        os.path.join(cx.root_dir, 'scripts', 'kill_all_spark_jobs.sh'),
         'prologue')
     remote_commands(server_cx, [
         'sudo chown root:root prologue',
@@ -1240,9 +1155,9 @@ def configure_hadoop_torque_client(cx):
 
     configure_torque_client(server_cx)
 
-def configure_terminate_hadoop_torque_client(cx):
-    hadoop_feature = find_feature(cx, 'hadoop')
-    server_cx = cx.new_node_scope(hadoop_feature['node'])
+def configure_terminate_spark_torque_client(cx):
+    spark_feature = find_feature(cx, 'spark')
+    server_cx = cx.new_node_scope(spark_feature['node'])
 
     configure_terminate_torque_client(server_cx)
 
@@ -1307,13 +1222,13 @@ configurations = {
     "torque_server": [configure_torque_server, 1, False],
     "torque_client": [configure_torque_client, 0, False],
     "terminate_torque_client": [configure_terminate_torque_client, 0, False],
-    "hadoop_base": [configure_hadoop_base, 0, False],
-    "hadoop_server": [configure_hadoop_server, 0, False],
-    "hadoop_client": [configure_hadoop_client, 0, False],
-    "hadoop_dataset": [configure_hadoop_dataset, 1, False],
-    "hadoop_torque_client": [configure_hadoop_torque_client, 0, False],
-    "terminate_hadoop_torque_client": [
-        configure_terminate_hadoop_torque_client, 0, False],
+    "spark_base": [configure_spark_base, 0, False],
+    "spark_server": [configure_spark_server, 0, False],
+    "spark_client": [configure_spark_client, 0, False],
+    "spark_dataset": [configure_spark_dataset, 1, False],
+    "spark_torque_client": [configure_spark_torque_client, 0, False],
+    "terminate_spark_torque_client": [
+        configure_terminate_spark_torque_client, 0, False],
     "skeleton": [configure_skeleton, 0, False],
     "monitoring": [configure_monitoring, 2, False],
     "analysis": [configure_analysis, 1, False],
@@ -1659,12 +1574,12 @@ def driver_create_user_helper(cx, username, fullname, given_name, surname):
     print password
     create_user(cx, username, password, fullname, given_name, surname, uid)
 
+    # TODO(shoumik): This may no longer be necessary.
     for cluster_name in cx.state['clusters'].iterkeys():
         cluster_cx = cx.new_cluster_scope(cluster_name)
-        hadoop_feature = find_feature(cluster_cx, 'hadoop', recursive = False)
-        if hadoop_feature is not None:
-            master_cx = cluster_cx.new_node_scope(hadoop_feature['node'])
-            create_hdfs_user(master_cx, username, hadoop_feature['user_dir'])
+        spark_feature = find_feature(cluster_cx, 'spark', recursive = False)
+        if spark_feature is not None:
+            master_cx = cluster_cx.new_node_scope(spark_feature['node'])
 
     cx.state['users'][username] = collections.OrderedDict([
         ('username', username),
@@ -1728,7 +1643,7 @@ def driver_import_roster(cx):
 
     # Create users.
     for username, first_name, last_name in zip(usernames, first_names, last_names):
-        fullname = ' '.join([first_name, last_name])
+        fullname = first_name + " " + last_name
         print 'Creating account %s for %s...' % (username, fullname)
         driver_create_user_helper(cx, username, fullname, first_name, last_name)
 

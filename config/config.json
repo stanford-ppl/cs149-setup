@@ -202,35 +202,35 @@
             "Provides": [],
             "Requires": ["torque"]
         },
-        "hadoop_base": {
+        "spark_base": {
             "Commands": [
-                ["configure", "hadoop_base"]
+                ["configure", "spark_base"]
             ],
             "Provides": [],
             "Requires": []
         },
-        "hadoop_server": {
+        "spark_server": {
             "Commands": [
-                ["configure", "hadoop_server"]
+                ["configure", "spark_server"]
             ],
-            "Provides": ["hadoop"],
+            "Provides": ["spark"],
             "Requires": []
         },
-        "hadoop_client": {
+        "spark_client": {
             "Commands": [
-                ["configure", "hadoop_client"]
+                ["configure", "spark_client"]
             ],
             "Provides": [],
-            "Requires": ["hadoop"]
+            "Requires": ["spark"]
         },
-        "hadoop_dataset": {
+        "spark_dataset": {
             "Commands": [
-                ["configure", "hadoop_dataset", "cs149-pa3"]
+                ["configure", "spark_dataset", "cs149-pa3"]
             ],
             "Provides": [],
-            "Requires": ["hadoop"]
+            "Requires": ["spark"]
         },
-        "hadoop_torque_server": {
+        "spark_torque_server": {
             "Commands": [
                 ["configure", "torque_server", {
                     "queue": [{
@@ -263,19 +263,19 @@
             "Provides": ["torque"],
             "Requires": []
         },
-        "hadoop_torque_client": {
+        "spark_torque_client": {
             "Commands": [
-                ["configure", "hadoop_torque_client"]
+                ["configure", "spark_torque_client"]
             ],
             "Provides": [],
-            "Requires": ["torque", "hadoop"]
+            "Requires": ["torque", "spark"]
         },
-        "terminate_hadoop_torque_client": {
+        "terminate_spark_torque_client": {
             "Commands": [
-                ["configure", "terminate_hadoop_torque_client"]
+                ["configure", "terminate_spark_torque_client"]
             ],
             "Provides": [],
-            "Requires": ["torque", "hadoop"]
+            "Requires": ["torque", "spark"]
         },
         "skeleton": {
             "Commands": [
@@ -389,7 +389,7 @@
                 "terminate_krb5_client"
             ]
         },
-        "hadoop_head": {
+        "spark_head": {
             "AMI": {
                 "us-east-1": "ami-26d6d131",
                 "us-west-2": "ami-ba2e86da"
@@ -401,7 +401,7 @@
                 "tmp",
                 "package_base",
                 "package_head_node",
-                "hadoop_base",
+                "spark_base",
                 "timezone",
                 "ssh_server"
             ],
@@ -410,7 +410,7 @@
                 "ldap_server",
                 "ldap_client",
                 "nfs_server",
-                "hadoop_torque_server",
+                "spark_torque_server",
                 "skeleton",
                 "monitoring",
                 "analysis"
@@ -418,7 +418,7 @@
             "Terminate Modules": [
             ]
         },
-        "hadoop_master": {
+        "spark_master": {
             "AMI": {
                 "us-east-1": "ami-26d6d131",
                 "us-west-2": "ami-ba2e86da"
@@ -430,7 +430,7 @@
                 "tmp",
                 "package_base",
                 "package_compute_node",
-                "hadoop_base",
+                "spark_base",
                 "timezone",
                 "ssh_server"
             ],
@@ -438,32 +438,32 @@
                 "krb5_client",
                 "ldap_client",
                 "nfs_client",
-                "hadoop_server"
+                "spark_server"
             ],
             "Terminate Modules": [
                 "terminate_krb5_client"
             ]
         },
-        "hadoop_slave": {
+        "spark_slave": {
             "AMI": {
                 "us-east-1": "ami-26d6d131",
                 "us-west-2": "ami-ba2e86da"
             },
-            "Instance Type": "m3.large",
+            "Instance Type": "m3.2xlarge",
             "Volume Size (GiB)": 16,
             "Disable API Termination": false,
             "Image Modules": [
                 "tmp",
                 "package_base",
                 "package_compute_node",
-                "hadoop_base",
+                "spark_base",
                 "timezone",
                 "ssh_server"
             ],
             "Instance Modules": [
                 "krb5_client",
                 "ldap_client",
-                "hadoop_client"
+                "spark_client"
             ],
             "Terminate Modules": [
                 "terminate_krb5_client"
@@ -472,17 +472,17 @@
     },
 
     "Clusters": {
-        "hadoop_cluster": {
+        "spark_cluster": {
             "Nodes": [
-                [1, "hadoop_master"],
-                [16, "hadoop_slave"]
+                [1, "spark_master"],
+                [10, "spark_slave"]
             ],
             "Modules": [
-                "hadoop_dataset",
-                "hadoop_torque_client"
+                "spark_dataset",
+                "spark_torque_client"
             ],
             "Terminate Modules": [
-                "terminate_hadoop_torque_client"
+                "terminate_spark_torque_client"
             ]
         }
     },
@@ -502,8 +502,8 @@
         },
         "pa3": {
             "Enable": [
-                "hadoop_head",
-                "hadoop_cluster"
+                "spark_head",
+                "spark_cluster"
             ]
         },
         "pa4": {
