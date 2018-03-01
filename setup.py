@@ -669,14 +669,27 @@ def configure_cuda_full(cx):
     gpu_config = os.path.join(cx.root_dir, 'etc', 'systemd','system', 'nvidia_gpu.conf')
     remote_copy(cx, gpu_config, 'nvidia_gpu.conf')
     #throws an error but just SKIP as it actually works fine
-    remote_command(cx, 
-        r'sudo update-initramfs -u')
+    remote_command(cx,
+      r'wget --progress=dot:mega https://developer.nvidia.com/compute/cuda/8.0/prod/local_installers/cuda_8.0.44_linux-run'
+    )
+    remote_command(cx,
+      r'echo "016fe98f55a49e36479602da7b8d12a130b6c83e  cuda_8.0.44_linux-run" | shasum --check'
+    )
+    remote_command(cx,
+      r'sudo apt-get install openjdk-8-jdk git python-dev python3-dev python-numpy python3-numpy build-essential python-pip python3-pip python3-venv swig python3-wheel libcurl3-dev'
+    )
+    remote_command(cx,
+      r'sudo apt-get install -y gcc g++ gfortran git linux-image-generic linux-headers-generic linux-source linux-image-extra-virtual libopenblas-dev'
+    )
 
     remote_command(cx, 
         r'sudo sh -c "echo \"blacklist nouveau\" >> /etc/modprobe.d/blacklist.conf"')
 
     remote_command(cx, 
         r'sudo sh -c "echo \"options nouveau modeset=0\" >> /etc/modprobe.d/blacklist.conf"')
+
+    remote_command(cx, 
+        r'sudo update-initramfs -u')
 
     #subprocess.call([
     #        'ssh',
